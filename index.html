@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>R&R Amizade — Manutenção e Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<style>
+:root{
+  --ink:#0E0E0F;
+  --ink-soft:#17181a;
+  --bone:#EDEAE3;
+  --bone-dim:#cfccc3;
+  --amber:#D97B29;
+  --amber-dim:#a85c1d;
+  --moss:#3D4A35;
+  --line:rgba(237,234,227,0.12);
+  --serif: 'Fraunces', serif;
+  --mono: 'JetBrains Mono', monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--ink);
+  color:var(--bone);
+  font-family:var(--mono);
+  overflow-x:hidden;
+  cursor:default;
+}
+::selection{background:var(--amber);color:var(--ink);}
+
+a{color:inherit;text-decoration:none;}
+.serif{font-family:var(--serif);}
+
+/* ===== grain overlay ===== */
+.grain{
+  position:fixed;inset:0;z-index:999;pointer-events:none;
+  opacity:0.035;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ===== oil level indicator (signature) ===== */
+.oil-gauge{
+  position:fixed; right:28px; top:50%; transform:translateY(-50%);
+  z-index:200; width:34px; height:240px;
+  display:flex; flex-direction:column; align-items:center;
+  gap:8px;
+}
+.oil-gauge .tube{
+  position:relative; width:8px; flex:1;
+  background:rgba(237,234,227,0.08);
+  border-radius:4px; overflow:hidden;
+}
+.oil-gauge .fill{
+  position:absolute; bottom:0; left:0; width:100%; height:0%;
+  background:linear-gradient(180deg, var(--amber), var(--amber-dim));
+  border-radius:4px;
+  box-shadow:0 0 12px rgba(217,123,41,0.5);
+}
+.oil-gauge .lbl{
+  font-size:9px; letter-spacing:0.12em; color:var(--bone-dim);
+  writing-mode:vertical-rl; text-orientation:mixed;
+}
+@media (max-width:900px){ .oil-gauge{display:none;} }
+
+/* ===== nav ===== */
+nav{
+  position:fixed; top:0; left:0; right:0; z-index:150;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:22px 5vw;
+  mix-blend-mode:difference;
+}
+.brand{
+  font-family:var(--serif); font-weight:900; font-size:1.05rem;
+  letter-spacing:-0.01em;
+}
+.brand b{color:var(--amber);}
+.navlinks{display:flex; gap:34px; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;}
+.navlinks a{position:relative; padding-bottom:4px;}
+.navlinks a::after{
+  content:''; position:absolute; left:0; bottom:0; height:1px; width:0;
+  background:currentColor; transition:width .3s ease;
+}
+.navlinks a:hover::after{width:100%;}
+@media (max-width:768px){ .navlinks{display:none;} }
+
+/* ===== hero ===== */
+#hero{
+  min-height:100vh; position:relative;
+  display:flex; flex-direction:column; justify-content:center;
+  padding:0 5vw;
+  border-bottom:1px solid var(--line);
+}
+.hero-eyebrow{
+  font-size:11px; letter-spacing:0.22em; text-transform:uppercase;
+  color:var(--bone-dim); margin-bottom:28px;
+  display:flex; align-items:center; gap:10px;
+}
+.hero-eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+h1.hero-title{
+  font-family:var(--serif); font-weight:600; font-style:italic;
+  font-size:clamp(3rem, 9vw, 8.5rem); line-height:0.92;
+  letter-spacing:-0.015em; max-width:1100px;
+}
+h1.hero-title .accent{ color:var(--amber); font-style:normal; font-weight:900;}
+.hero-foot{
+  display:flex; justify-content:space-between; align-items:flex-end;
+  margin-top:48px; gap:40px; flex-wrap:wrap;
+}
+.hero-desc{ max-width:380px; font-size:14px; line-height:1.8; color:var(--bone-dim);}
+.hero-scrollcue{
+  display:flex; align-items:center; gap:12px; font-size:11px;
+  letter-spacing:0.12em; text-transform:uppercase; color:var(--bone-dim);
+}
+.scroll-line{
+  width:1px; height:40px; background:var(--line); position:relative; overflow:hidden;
+}
+.scroll-line::after{
+  content:''; position:absolute; top:0; left:0; width:100%; height:30%;
+  background:var(--amber); animation:scrolldrop 1.8s ease-in-out infinite;
+}
+@keyframes scrolldrop{ 0%{top:-30%;} 100%{top:100%;} }
+
+.hero-bg-num{
+  position:absolute; right:5vw; top:50%; transform:translateY(-50%);
+  font-family:var(--serif); font-weight:900; font-size:18vw; line-height:1;
+  color:rgba(237,234,227,0.025); pointer-events:none; user-select:none;
+  z-index:0;
+}
+
+/* ===== marquee strip ===== */
+.marquee-wrap{
+  background:var(--amber); color:var(--ink);
+  overflow:hidden; white-space:nowrap; padding:14px 0;
+  border-bottom:1px solid var(--ink);
+}
+.marquee{
+  display:inline-flex; gap:60px;
+  font-family:var(--serif); font-weight:600; font-style:italic;
+  font-size:1.1rem; animation:marquee 28s linear infinite;
+}
+.marquee span{ display:inline-flex; align-items:center; gap:60px; }
+.marquee .sep{ font-style:normal; opacity:0.5; }
+@keyframes marquee{ from{transform:translateX(0);} to{transform:translateX(-50%);} }
+
+/* ===== section shell ===== */
+.section{ padding:160px 5vw; position:relative; }
+.section-head{ display:flex; gap:60px; margin-bottom:80px; align-items:flex-start; flex-wrap:wrap;}
+.section-tag{
+  font-size:11px; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--amber); writing-mode:vertical-rl; text-orientation:mixed;
+  flex-shrink:0; padding-top:6px;
+}
+@media (max-width:768px){ .section-tag{writing-mode:horizontal-tb; padding-top:0;} }
+.section-title{
+  font-family:var(--serif); font-weight:600; font-size:clamp(2.2rem,4.5vw,4rem);
+  line-height:1.05; max-width:780px;
+}
+.section-title em{ font-style:italic; color:var(--amber); font-weight:600;}
+
+/* ===== services — ficha técnica style ===== */
+.specs{ border-top:1px solid var(--line); }
+.spec-row{
+  display:grid; grid-template-columns: 80px 1fr 1.4fr 220px;
+  gap:32px; padding:38px 0; border-bottom:1px solid var(--line);
+  align-items:start; position:relative; transition:padding-left .35s ease;
+}
+.spec-row:hover{ padding-left:16px; }
+.spec-row:hover .spec-name{ color:var(--amber); }
+.spec-idx{ font-size:12px; color:var(--bone-dim); padding-top:8px;}
+.spec-name{
+  font-family:var(--serif); font-weight:600; font-size:1.6rem;
+  transition:color .25s ease;
+}
+.spec-desc{ font-size:13.5px; line-height:1.8; color:var(--bone-dim); padding-top:8px; }
+.spec-meta{ text-align:right; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--amber); padding-top:10px;}
+@media (max-width:900px){
+  .spec-row{ grid-template-columns:1fr; gap:10px;}
+  .spec-meta{ text-align:left; }
+}
+
+/* ===== why — diagnostic readout ===== */
+.diag-wrap{
+  display:grid; grid-template-columns: 1fr 1fr; gap:80px; align-items:start;
+}
+@media (max-width:900px){ .diag-wrap{grid-template-columns:1fr; gap:50px;} }
+.diag-list .diag-item{ padding:28px 0; border-bottom:1px solid var(--line); }
+.diag-item:first-child{ padding-top:0; }
+.diag-head{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px; }
+.diag-head .ok{ color:var(--amber); font-weight:700; }
+.diag-bar{ height:3px; background:var(--line); position:relative; overflow:hidden; border-radius:2px;}
+.diag-bar .fill{ position:absolute; left:0; top:0; height:100%; background:var(--amber); width:0%; }
+.diag-name{ font-family:var(--serif); font-size:1.05rem; font-weight:600; margin-top:6px;}
+
+.readout-panel{
+  background:var(--ink-soft); border:1px solid var(--line); border-radius:4px;
+  padding:48px; position:relative; overflow:hidden;
+}
+.readout-num{ font-family:var(--serif); font-weight:900; font-size:6rem; line-height:1; color:var(--amber);}
+.readout-sub{ font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--bone-dim); margin-top:6px; margin-bottom:40px;}
+.readout-quote{
+  font-family:var(--serif); font-style:italic; font-size:1.1rem; line-height:1.6;
+  border-left:2px solid var(--amber); padding-left:20px; margin-bottom:18px; color:var(--bone);
+}
+.readout-attr{ font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--bone-dim); }
+
+/* ===== hours / contact — terminal style ===== */
+.terminal{
+  background:var(--ink-soft); border:1px solid var(--line); border-radius:6px;
+  font-family:var(--mono); font-size:13.5px; overflow:hidden;
+}
+.terminal-bar{
+  display:flex; align-items:center; gap:8px; padding:14px 20px;
+  border-bottom:1px solid var(--line); background:rgba(0,0,0,0.2);
+}
+.terminal-bar .led{ width:9px; height:9px; border-radius:50%; }
+.led.r{background:#e25555;} .led.y{background:#e2c155;} .led.g{background:#5ae28e;}
+.terminal-bar .path{ margin-left:12px; color:var(--bone-dim); font-size:11.5px;}
+.terminal-body{ padding:28px; line-height:2; }
+.tline{ display:flex; gap:18px; }
+.tline .day{ width:140px; color:var(--bone-dim); }
+.tline .hrs{ color:var(--bone); }
+.tline.today .day{ color:var(--bone-dim); }
+.tline.today .hrs{ color:var(--bone); font-weight:400; }
+.tline.closed .hrs{ color:var(--bone-dim); font-style:italic; }
+.cursor{ display:inline-block; width:8px; height:14px; background:var(--bone); animation:blink 1s step-end infinite; vertical-align:middle; margin-left:4px;}
+@keyframes blink{ 50%{opacity:0;} }
+
+.contact-grid{ display:grid; gap:0; margin-top:40px; }
+.contact-line{
+  display:flex; justify-content:space-between; padding:20px 0;
+  border-bottom:1px solid var(--line); font-size:14px;
+}
+.contact-line .k{ color:var(--bone-dim); font-size:11px; letter-spacing:0.1em; text-transform:uppercase;}
+.contact-line .v{ font-family:var(--serif); font-weight:600; font-size:1.05rem; }
+.contact-line .v:hover{ color:var(--amber); }
+
+/* ===== CTA ===== */
+#cta{
+  padding:200px 5vw; text-align:center; position:relative;
+  border-top:1px solid var(--line);
+}
+.cta-title{
+  font-family:var(--serif); font-weight:600; font-style:italic;
+  font-size:clamp(2.6rem,7vw,6rem); line-height:1; margin-bottom:50px;
+}
+.cta-title .accent{ color:var(--amber); font-style:normal; font-weight:900; }
+.cta-buttons{ display:flex; gap:18px; justify-content:center; flex-wrap:wrap; }
+.btn{
+  font-family:var(--mono); font-size:13px; letter-spacing:0.05em; text-transform:uppercase;
+  padding:18px 38px; border-radius:2px; transition:all .25s ease;
+  display:inline-flex; align-items:center; gap:10px; border:1px solid var(--bone);
+}
+.btn.fill{ background:var(--bone); color:var(--ink); }
+.btn.fill:hover{ background:var(--amber); border-color:var(--amber); color:var(--ink); }
+.btn.line:hover{ border-color:var(--amber); color:var(--amber); }
+
+/* ===== footer ===== */
+footer{
+  display:flex; justify-content:space-between; align-items:center;
+  padding:32px 5vw; border-top:1px solid var(--line);
+  font-size:11px; letter-spacing:0.08em; color:var(--bone-dim); flex-wrap:wrap; gap:14px;
+}
+footer .flinks{ display:flex; gap:24px; text-transform:uppercase; }
+footer .flinks a:hover{ color:var(--amber); }
+
+/* reveal helper for non-gsap fallback */
+.gs-reveal{ opacity:0; }
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- OIL GAUGE -->
+<div class="oil-gauge">
+  <span class="lbl">NÍVEL DA PÁGINA</span>
+  <div class="tube"><div class="fill" id="oilFill"></div></div>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="brand">R&amp;R <b>Amizade</b></div>
+  <div class="navlinks">
+    <a href="#servicos">Serviços</a>
+    <a href="#diagnostico">Diagnóstico</a>
+    <a href="#horarios">Horários</a>
+  </div>
+  <a href="https://wa.me/551938284860" target="_blank" style="font-size:12px; letter-spacing:0.08em; text-transform:uppercase;">WhatsApp ↗</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg-num">01</div>
+  <div class="hero-eyebrow"><span class="dot"></span> Sumaré &amp; Nova Odessa, SP</div>
+  <h1 class="hero-title" id="heroTitle">
+    Seu carro <span class="accent">merece</span><br>
+    mãos que <em style="font-style:italic">entendem</em><br>
+    de motor.
+  </h1>
+  <div class="hero-foot">
+    <p class="hero-desc">
+      Troca de óleo, revisão e manutenção feitas por quem é apaixonado pelo assunto — desde 4,6 estrelas comprovadas, em mais de 190 avaliações.
+    </p>
+    <div class="hero-scrollcue">
+      <div class="scroll-line"></div>
+      role para descobrir
+    </div>
+  </div>
+</section>
+
+<!-- MARQUEE -->
+<div class="marquee-wrap">
+  <div class="marquee">
+    <span>TROCA DE ÓLEO <span class="sep">/</span> REVISÃO COMPLETA <span class="sep">/</span> TRANSMISSÃO AUTOMÁTICA <span class="sep">/</span> DIAGNÓSTICO ELETRÔNICO <span class="sep">/</span> PERFORMANCE</span>
+    <span>TROCA DE ÓLEO <span class="sep">/</span> REVISÃO COMPLETA <span class="sep">/</span> TRANSMISSÃO AUTOMÁTICA <span class="sep">/</span> DIAGNÓSTICO ELETRÔNICO <span class="sep">/</span> PERFORMANCE</span>
+  </div>
+</div>
+
+<!-- SERVICES -->
+<section id="servicos" class="section">
+  <div class="section-head">
+    <div class="section-tag">FICHA TÉCNICA</div>
+    <h2 class="section-title">O que fazemos <em>passa por</em> aqui dentro.</h2>
+  </div>
+
+  <div class="specs">
+    <div class="spec-row gs-row">
+      <div class="spec-idx">01</div>
+      <div class="spec-name">Troca de Óleo</div>
+      <div class="spec-desc">Lubrificantes certificados, descarte correto do óleo usado e checagem de filtro em todas as trocas.</div>
+      <div class="spec-meta">~30 min</div>
+    </div>
+    <div class="spec-row gs-row">
+      <div class="spec-idx">02</div>
+      <div class="spec-name">Revisão Completa</div>
+      <div class="spec-desc">Fluidos, filtros, correias e itens de desgaste verificados ponto a ponto, com laudo claro do que foi feito.</div>
+      <div class="spec-meta">~1h30</div>
+    </div>
+    <div class="spec-row gs-row">
+      <div class="spec-idx">03</div>
+      <div class="spec-name">Transmissão Automática</div>
+      <div class="spec-desc">Troca de óleo de transmissão com equipamento próprio, compatível com a maioria dos modelos do mercado.</div>
+      <div class="spec-meta">~1h</div>
+    </div>
+    <div class="spec-row gs-row">
+      <div class="spec-idx">04</div>
+      <div class="spec-name">Diagnóstico Eletrônico</div>
+      <div class="spec-desc">Scanner automotivo para localizar falhas com precisão antes de qualquer intervenção mecânica.</div>
+      <div class="spec-meta">~20 min</div>
+    </div>
+    <div class="spec-row gs-row">
+      <div class="spec-idx">05</div>
+      <div class="spec-name">Performance</div>
+      <div class="spec-desc">Ajustes e melhorias para quem quer extrair o melhor do motor sem abrir mão da confiabilidade.</div>
+      <div class="spec-meta">a combinar</div>
+    </div>
+  </div>
+</section>
+
+<!-- DIAGNOSTIC / WHY -->
+<section id="diagnostico" class="section" style="background:var(--ink-soft); border-top:1px solid var(--line); border-bottom:1px solid var(--line);">
+  <div class="section-head">
+    <div class="section-tag">DIAGNÓSTICO</div>
+    <h2 class="section-title">Por que clientes <em>voltam</em> sempre.</h2>
+  </div>
+
+  <div class="diag-wrap">
+    <div class="diag-list">
+      <div class="diag-item">
+        <div class="diag-head"><span>HONESTIDADE NO ORÇAMENTO</span><span class="ok">ÓTIMO</span></div>
+        <div class="diag-bar"><div class="fill" data-w="96"></div></div>
+        <div class="diag-name">Você sabe exatamente pelo que está pagando.</div>
+      </div>
+      <div class="diag-item">
+        <div class="diag-head"><span>VELOCIDADE DE ATENDIMENTO</span><span class="ok">ÓTIMO</span></div>
+        <div class="diag-bar"><div class="fill" data-w="90"></div></div>
+        <div class="diag-name">Seu tempo importa — entramos no ritmo do seu dia.</div>
+      </div>
+      <div class="diag-item">
+        <div class="diag-head"><span>QUALIDADE TÉCNICA</span><span class="ok">ÓTIMO</span></div>
+        <div class="diag-bar"><div class="fill" data-w="94"></div></div>
+        <div class="diag-name">Equipe que entende de carro de verdade, não só troca peça.</div>
+      </div>
+      <div class="diag-item">
+        <div class="diag-head"><span>ACESSIBILIDADE DO ESPAÇO</span><span class="ok">ÓTIMO</span></div>
+        <div class="diag-bar"><div class="fill" data-w="88"></div></div>
+        <div class="diag-name">Estrutura pensada para receber qualquer cliente bem.</div>
+      </div>
+    </div>
+
+    <div class="readout-panel">
+      <div class="readout-num">4.6</div>
+      <div class="readout-sub">/ 5.0 — baseado em 190+ avaliações no Google</div>
+      <p class="readout-quote">"Ótimo atendimento, preço justo, qualidade, honestidade, rapidez e tratamento de excelência."</p>
+      <div class="readout-attr">— avaliação verificada, Google Maps</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOURS & CONTACT -->
+<section id="horarios" class="section">
+  <div class="section-head">
+    <div class="section-tag">STATUS DA LOJA</div>
+    <h2 class="section-title">Quando &amp; <em>onde</em> nos encontrar.</h2>
+  </div>
+
+  <div class="diag-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <span class="led r"></span><span class="led y"></span><span class="led g"></span>
+        <span class="path">~/rr-amizade/horario-funcionamento.log</span>
+      </div>
+      <div class="terminal-body">
+        <div class="tline"><span class="day">segunda-feira</span><span class="hrs">08:00 — 18:00</span></div>
+        <div class="tline"><span class="day">terça-feira</span><span class="hrs">08:00 — 18:00</span></div>
+        <div class="tline"><span class="day">quarta-feira</span><span class="hrs">08:00 — 18:00</span></div>
+        <div class="tline"><span class="day">quinta-feira</span><span class="hrs">08:00 — 18:00</span></div>
+        <div class="tline"><span class="day">sexta-feira</span><span class="hrs">08:00 — 18:00</span></div>
+        <div class="tline"><span class="day">sábado</span><span class="hrs">08:00 — 13:00</span></div>
+        <div class="tline closed"><span class="day">domingo</span><span class="hrs">fechado</span></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="contact-grid">
+        <div class="contact-line">
+          <span class="k">Unidade Sumaré</span>
+          <a class="v" href="https://maps.google.com/?q=Av.+da+Amizade,+2750+Sumar%C3%A9" target="_blank">Av. da Amizade, 2750 ↗</a>
+        </div>
+        <div class="contact-line">
+          <span class="k">Unidade Nova Odessa</span>
+          <a class="v" href="#">Av. Carlos Botelho, 1170 ↗</a>
+        </div>
+        <div class="contact-line">
+          <span class="k">Telefone</span>
+          <a class="v" href="tel:+551938284860">(19) 3828-4860</a>
+        </div>
+        <div class="contact-line">
+          <span class="k">WhatsApp</span>
+          <a class="v" href="https://wa.me/551938284860" target="_blank">(19) 3828-4860 ↗</a>
+        </div>
+        <div class="contact-line">
+          <span class="k">Instagram</span>
+          <a class="v" href="https://instagram.com/trocadeoleo.rr" target="_blank">@trocadeoleo.rr ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta">
+  <h2 class="cta-title">Bora marcar <span class="accent">sua revisão?</span></h2>
+  <div class="cta-buttons">
+    <a class="btn fill" href="https://wa.me/551938284860" target="_blank">Falar no WhatsApp →</a>
+    <a class="btn line" href="tel:+551938284860">Ligar agora</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div>© 2024 R&amp;R Amizade — Manutenção e Performance</div>
+  <div class="flinks">
+    <a href="https://instagram.com/trocadeoleo.rr" target="_blank">Instagram</a>
+    <a href="https://wa.me/551938284860" target="_blank">WhatsApp</a>
+  </div>
+</footer>
+
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* oil gauge fill tied to total scroll progress */
+ScrollTrigger.create({
+  trigger: document.body,
+  start: 'top top',
+  end: 'bottom bottom',
+  onUpdate: (self) => {
+    document.getElementById('oilFill').style.height = (self.progress * 100) + '%';
+  }
+});
+
+/* hero title parallax-in */
+gsap.from('#heroTitle', { opacity:0, y:40, duration:1.1, ease:'power3.out', delay:0.15 });
+gsap.from('.hero-eyebrow', { opacity:0, y:20, duration:.8, ease:'power3.out' });
+gsap.from('.hero-foot', { opacity:0, y:20, duration:.9, ease:'power3.out', delay:0.3 });
+
+/* spec rows reveal + stagger */
+gsap.utils.toArray('.gs-row').forEach((row, i) => {
+  gsap.from(row, {
+    opacity: 0, y: 30,
+    duration: 0.7, ease:'power2.out',
+    scrollTrigger: { trigger: row, start:'top 88%' }
+  });
+});
+
+/* section heads reveal */
+gsap.utils.toArray('.section-title, .section-tag').forEach(el => {
+  gsap.from(el, {
+    opacity:0, y:24, duration:0.8, ease:'power2.out',
+    scrollTrigger:{ trigger: el, start:'top 85%' }
+  });
+});
+
+/* diagnostic bars fill on scroll */
+gsap.utils.toArray('.diag-bar .fill').forEach(bar => {
+  const w = bar.dataset.w;
+  gsap.to(bar, {
+    width: w + '%', duration: 1.2, ease:'power3.out',
+    scrollTrigger: { trigger: bar, start:'top 90%' }
+  });
+});
+gsap.utils.toArray('.diag-item').forEach((item,i) => {
+  gsap.from(item, {
+    opacity:0, x:-20, duration:0.6, delay:i*0.05, ease:'power2.out',
+    scrollTrigger:{ trigger:item, start:'top 90%' }
+  });
+});
+
+/* readout panel reveal */
+gsap.from('.readout-panel', {
+  opacity:0, x:30, duration:0.9, ease:'power2.out',
+  scrollTrigger:{ trigger:'.readout-panel', start:'top 85%' }
+});
+
+/* terminal + contact reveal */
+gsap.from('.terminal', { opacity:0, y:24, duration:0.8, ease:'power2.out', scrollTrigger:{trigger:'.terminal', start:'top 88%'} });
+gsap.utils.toArray('.contact-line').forEach((l,i) => {
+  gsap.from(l, { opacity:0, x:20, duration:0.5, delay:i*0.06, ease:'power2.out', scrollTrigger:{trigger:l, start:'top 92%'} });
+});
+
+/* CTA reveal */
+gsap.from('.cta-title', { opacity:0, scale:0.96, duration:1, ease:'power3.out', scrollTrigger:{trigger:'.cta-title', start:'top 85%'} });
+gsap.from('.cta-buttons', { opacity:0, y:20, duration:0.8, ease:'power2.out', scrollTrigger:{trigger:'.cta-buttons', start:'top 92%'} });
+
+/* hero bg number parallax */
+gsap.to('.hero-bg-num', {
+  y: 120, ease:'none',
+  scrollTrigger: { trigger:'#hero', start:'top top', end:'bottom top', scrub:true }
+});
+</script>
+</body>
+</html>
